@@ -8,75 +8,72 @@ __all__ = ['create_max_cut_model', 'create_mis_model', 'create_Q_matrix', 'qubo_
 import jax
 import jax.numpy as jnp
 import numpy as np
-import networkx as nx # for making graphs
-import optax # for optimizing GNN with Adam
+import networkx as nx  # for making graphs
+import optax  # for optimizing GNN with Adam
 
-from flax import linen as nn # for defining the GNN
-from flax.training import train_state # utility for training
-from pyqubo import Array # for defining the QUBO
-from tqdm.notebook import trange, tqdm # visualizing notebook progress
+from flax import linen as nn  # for defining the GNN
+from flax.training import train_state  # utility for training
+from pyqubo import Array  # for defining the QUBO
+from tqdm.notebook import trange, tqdm  # visualizing notebook progress
 
 # %% ../00_GNN_Definition.ipynb 6
 def create_max_cut_model(graph):
-  N = graph.number_of_nodes()
-  X = Array.create("X", shape=(N,), vartype="BINARY")
+    N = graph.number_of_nodes()
+    X = Array.create("X", shape=(N,), vartype="BINARY")
 
-  hamiltonian = 0
-  for u, v in graph.edges:
-    hamiltonian -= (X[u] - X[v])**2
-  
-  return hamiltonian.compile()
+    hamiltonian = 0
+    for u, v in graph.edges:
+        hamiltonian -= (X[u] - X[v]) ** 2
+
+    return hamiltonian.compile()
+
 
 def create_mis_model(graph, penalty=2):
-  N = graph.number_of_nodes()
-  X = Array.create("X", shape=(N,), vartype="BINARY")
+    N = graph.number_of_nodes()
+    X = Array.create("X", shape=(N,), vartype="BINARY")
 
-  hamiltonian = -sum(X)
-  for u, v in graph.edges:
-    hamiltonian += penalty * (X[u] * X[v])
+    hamiltonian = -sum(X)
+    for u, v in graph.edges:
+        hamiltonian += penalty * (X[u] * X[v])
 
-  return hamiltonian.compile()
+    return hamiltonian.compile()
+
 
 def create_Q_matrix(graph, is_max_cut=True):
-  if is_max_cut:
-    model = create_max_cut_model(graph)
-  else:
-    model = create_mis_model(graph)
-  
-  N = graph.number_of_nodes()
-  extract_val = lambda x: int(x[2:-1])
-  Q_matrix = np.zeros((N, N))
+    if is_max_cut:
+        model = create_max_cut_model(graph)
+    else:
+        model = create_mis_model(graph)
 
-  qubo_dict, _ = model.to_qubo()
+    N = graph.number_of_nodes()
+    extract_val = lambda x: int(x[2:-1])
+    Q_matrix = np.zeros((N, N))
 
-  for (a, b), quv in qubo_dict.items():
-    u = min(extract_val(a), extract_val(b))
-    v = max(extract_val(a), extract_val(b))
-    Q_matrix[u,v] = quv
+    qubo_dict, _ = model.to_qubo()
 
-  return jnp.array(Q_matrix)
+    for (a, b), quv in qubo_dict.items():
+        u = min(extract_val(a), extract_val(b))
+        v = max(extract_val(a), extract_val(b))
+        Q_matrix[u, v] = quv
+
+    return jnp.array(Q_matrix)
 
 # %% ../00_GNN_Definition.ipynb 7
 def qubo_approx_cost(probs, Q):
-  cost = jnp.sum(
-      jnp.matmul(
-          jnp.matmul(jnp.transpose(probs), Q), 
-          probs
-      )
-  )
-  return cost  
+    cost = jnp.sum(jnp.matmul(jnp.matmul(jnp.transpose(probs), Q), probs))
+    return cost
 
 # %% ../00_GNN_Definition.ipynb 8
 def compute_metrics(*, probs, q_matrix):
-  energy = qubo_approx_cost(probs=probs, Q=q_matrix)
-  metrics = {
-      "energy": energy,
-  }
-  return metrics
+    energy = qubo_approx_cost(probs=probs, Q=q_matrix)
+    metrics = {
+        "energy": energy,
+    }
+    return metrics
 
 # %% ../00_GNN_Definition.ipynb 9
 class GraphConvLayer(nn.Module):
-    c_out : int  # Output feature size
+    c_out: int  # Output feature size
 
     @nn.compact
     def __call__(self, node_feats, adj_matrix):
@@ -94,7 +91,9 @@ class CombGNN(nn.Module):
     @nn.compact
     def __call__(self, node_feats, adj_matrix, train=False):
         # First convolution
-        h = GraphConvLayer(c_out=self.hidden_size)(node_feats=node_feats, adj_matrix=adj_matrix)
+        h = GraphConvLayer(c_out=self.hidden_size)(
+            node_feats=node_feats, adj_matrix=adj_matrix
+        )
         h = nn.relu(h)
         h = nn.Dropout(rate=self.dropout_frac, deterministic=not train)(h)
         # Second convolution
@@ -104,31 +103,44 @@ class CombGNN(nn.Module):
         return probs
 
 # %% ../00_GNN_Definition.ipynb 11
-def create_train_state(n_vertices, embedding_size, hidden_size, rng, learning_rate, dropout_frac=0.0):
-  gnn = CombGNN(hidden_size = hidden_size, num_classes=1, dropout_frac=dropout_frac)
-  dropout_rng = jax.random.PRNGKey(0)
-  params = gnn.init(rngs={'params': rng, 'dropout': dropout_rng}, node_feats=jnp.ones([n_vertices, embedding_size]), adj_matrix=jnp.ones([n_vertices, n_vertices]), train=True)["params"]
-  tx = optax.adam(learning_rate)
-  return train_state.TrainState.create(apply_fn = gnn.apply, params=params, tx=tx)
+def create_train_state(
+    n_vertices, embedding_size, hidden_size, rng, learning_rate, dropout_frac=0.0
+):
+    gnn = CombGNN(hidden_size=hidden_size, num_classes=1, dropout_frac=dropout_frac)
+    dropout_rng = jax.random.PRNGKey(0)
+    params = gnn.init(
+        rngs={"params": rng, "dropout": dropout_rng},
+        node_feats=jnp.ones([n_vertices, embedding_size]),
+        adj_matrix=jnp.ones([n_vertices, n_vertices]),
+        train=True,
+    )["params"]
+    tx = optax.adam(learning_rate)
+    return train_state.TrainState.create(apply_fn=gnn.apply, params=params, tx=tx)
 
 # %% ../00_GNN_Definition.ipynb 12
 @jax.jit
 def train_step(state, node_embeddings, adj_matrix, q_matrix, dropout_rng):
-  """Train for a single step."""
-  def cost_fn(params):
-    probs = state.apply_fn({'params': params}, node_embeddings, adj_matrix, rngs={'dropout': dropout_rng}, train=True)
-    cost = qubo_approx_cost(probs=probs, Q=q_matrix)
-    return cost, probs
-  grad_fn = jax.grad(cost_fn, has_aux=True)
-  grads, probs = grad_fn(state.params)
-  state = state.apply_gradients(grads=grads)
-  metrics = compute_metrics(probs=probs, q_matrix=q_matrix)
-  return state, metrics
+    """Train for a single step."""
+
+    def cost_fn(params):
+        probs = state.apply_fn(
+            {"params": params},
+            node_embeddings,
+            adj_matrix,
+            rngs={"dropout": dropout_rng},
+            train=True,
+        )
+        cost = qubo_approx_cost(probs=probs, Q=q_matrix)
+        return cost, probs
+
+    grad_fn = jax.grad(cost_fn, has_aux=True)
+    grads, probs = grad_fn(state.params)
+    state = state.apply_gradients(grads=grads)
+    metrics = compute_metrics(probs=probs, q_matrix=q_matrix)
+    return state, metrics
 
 # %% ../00_GNN_Definition.ipynb 13
-def get_classification(apply_fn, node_embedding, adj_matrix):
-  pred_probs = state.apply_fn({'params': state.params}, node_embeddings, adj_matrix)
-  classification = jnp.where(
-      pred_probs >= 0.5, 1, 0 
-  )
-  return np.ravel(classification)
+def get_classification(apply_fn, params, node_embedding, adj_matrix):
+    pred_probs = apply_fn({"params": params}, node_embeddings, adj_matrix)
+    classification = jnp.where(pred_probs >= 0.5, 1, 0)
+    return np.ravel(classification)
