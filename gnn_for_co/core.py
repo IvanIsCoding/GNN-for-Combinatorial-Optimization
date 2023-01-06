@@ -140,7 +140,7 @@ def train_step(state, node_embeddings, adj_matrix, q_matrix, dropout_rng):
     return state, metrics
 
 # %% ../00_GNN_Definition.ipynb 13
-def get_classification(apply_fn, params, node_embedding, adj_matrix):
+def get_classification(apply_fn, params, node_embeddings, adj_matrix):
     pred_probs = apply_fn({"params": params}, node_embeddings, adj_matrix)
     classification = jnp.where(pred_probs >= 0.5, 1, 0)
     return np.ravel(classification)
