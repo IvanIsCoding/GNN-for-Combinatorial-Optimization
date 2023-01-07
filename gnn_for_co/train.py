@@ -53,7 +53,7 @@ def inner_solve_with_gnn(
         learning_rate,
         dropout_frac=0.01,
     )
-    node_embeddings = jax.random.uniform(embed_rng, [G.number_of_nodes(), embedding_d0])
+    node_embeddings = jax.random.uniform(embed_rng, [G.number_of_nodes(), embedding_size])
 
     for epoch in trange(1, epochs + 1, disable=not verbose):
         rng, dropout_rng = jax.random.split(rng)
