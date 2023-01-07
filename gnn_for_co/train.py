@@ -122,7 +122,7 @@ def solve_with_annealing(G, num_reads, is_max_cut=True):
     if is_max_cut:
         model = create_max_cut_model(G)
     else:
-        model = create_mis_model(graph)
+        model = create_mis_model(G)
 
     qubo_dict, offset = model.to_qubo()
 
