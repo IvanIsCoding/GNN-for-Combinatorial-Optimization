@@ -4,7 +4,7 @@
 __all__ = ['create_max_cut_model', 'create_mis_model', 'create_Q_matrix', 'qubo_approx_cost', 'compute_metrics', 'GraphConvLayer',
            'CombGNN', 'create_train_state', 'train_step', 'get_classification']
 
-# %% ../00_GNN_Definition.ipynb 5
+# %% ../00_GNN_Definition.ipynb 7
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -16,7 +16,7 @@ from flax.training import train_state  # utility for training
 from pyqubo import Array  # for defining the QUBO
 from tqdm.notebook import trange, tqdm  # visualizing notebook progress
 
-# %% ../00_GNN_Definition.ipynb 6
+# %% ../00_GNN_Definition.ipynb 10
 def create_max_cut_model(graph):
     N = graph.number_of_nodes()
     X = Array.create("X", shape=(N,), vartype="BINARY")
@@ -58,12 +58,12 @@ def create_Q_matrix(graph, is_max_cut=True):
 
     return jnp.array(Q_matrix)
 
-# %% ../00_GNN_Definition.ipynb 7
+# %% ../00_GNN_Definition.ipynb 12
 def qubo_approx_cost(probs, Q):
     cost = jnp.sum(jnp.matmul(jnp.matmul(jnp.transpose(probs), Q), probs))
     return cost
 
-# %% ../00_GNN_Definition.ipynb 8
+# %% ../00_GNN_Definition.ipynb 13
 def compute_metrics(*, probs, q_matrix):
     energy = qubo_approx_cost(probs=probs, Q=q_matrix)
     metrics = {
@@ -71,7 +71,7 @@ def compute_metrics(*, probs, q_matrix):
     }
     return metrics
 
-# %% ../00_GNN_Definition.ipynb 9
+# %% ../00_GNN_Definition.ipynb 15
 class GraphConvLayer(nn.Module):
     c_out: int  # Output feature size
 
@@ -82,7 +82,7 @@ class GraphConvLayer(nn.Module):
         node_feats_w2 = nn.Dense(features=self.c_out)(node_feats_w2)
         return node_feats_w1 + node_feats_w2
 
-# %% ../00_GNN_Definition.ipynb 10
+# %% ../00_GNN_Definition.ipynb 17
 class CombGNN(nn.Module):
     hidden_size: int
     num_classes: int
@@ -102,7 +102,7 @@ class CombGNN(nn.Module):
 
         return probs
 
-# %% ../00_GNN_Definition.ipynb 11
+# %% ../00_GNN_Definition.ipynb 19
 def create_train_state(
     n_vertices, embedding_size, hidden_size, rng, learning_rate, dropout_frac=0.0
 ):
@@ -117,7 +117,7 @@ def create_train_state(
     tx = optax.adam(learning_rate)
     return train_state.TrainState.create(apply_fn=gnn.apply, params=params, tx=tx)
 
-# %% ../00_GNN_Definition.ipynb 12
+# %% ../00_GNN_Definition.ipynb 21
 @jax.jit
 def train_step(state, node_embeddings, adj_matrix, q_matrix, dropout_rng):
     """Train for a single step."""
@@ -139,7 +139,7 @@ def train_step(state, node_embeddings, adj_matrix, q_matrix, dropout_rng):
     metrics = compute_metrics(probs=probs, q_matrix=q_matrix)
     return state, metrics
 
-# %% ../00_GNN_Definition.ipynb 13
+# %% ../00_GNN_Definition.ipynb 23
 def get_classification(apply_fn, params, node_embeddings, adj_matrix):
     pred_probs = apply_fn({"params": params}, node_embeddings, adj_matrix)
     classification = jnp.where(pred_probs >= 0.5, 1, 0)

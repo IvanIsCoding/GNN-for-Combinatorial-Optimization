@@ -17,4 +17,9 @@ d = { 'settings': { 'branch': 'main',
                                  'gnn_for_co.core.create_train_state': ('gnn_definition.html#create_train_state', 'gnn_for_co/core.py'),
                                  'gnn_for_co.core.get_classification': ('gnn_definition.html#get_classification', 'gnn_for_co/core.py'),
                                  'gnn_for_co.core.qubo_approx_cost': ('gnn_definition.html#qubo_approx_cost', 'gnn_for_co/core.py'),
-                                 'gnn_for_co.core.train_step': ('gnn_definition.html#train_step', 'gnn_for_co/core.py')}}}
+                                 'gnn_for_co.core.train_step': ('gnn_definition.html#train_step', 'gnn_for_co/core.py')},
+            'gnn_for_co.train': { 'gnn_for_co.train.inner_solve_with_gnn': ( 'gnn_vs_sa_for_max_cut.html#inner_solve_with_gnn',
+                                                                             'gnn_for_co/train.py'),
+                                  'gnn_for_co.train.solve_with_annealing': ( 'gnn_vs_sa_for_max_cut.html#solve_with_annealing',
+                                                                             'gnn_for_co/train.py'),
+                                  'gnn_for_co.train.solve_with_gnn': ('gnn_vs_sa_for_max_cut.html#solve_with_gnn', 'gnn_for_co/train.py')}}}
