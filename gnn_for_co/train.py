@@ -27,7 +27,7 @@ from tqdm.notebook import trange, tqdm
 
 sns.set_theme()
 
-# %% ../01_GNN_vs_SA_for_Max_Cut.ipynb 16
+# %% ../01_GNN_vs_SA_for_Max_Cut.ipynb 18
 def inner_solve_with_gnn(
     G,
     embedding_size,
@@ -115,7 +115,7 @@ def solve_with_gnn(
 
     return solution
 
-# %% ../01_GNN_vs_SA_for_Max_Cut.ipynb 17
+# %% ../01_GNN_vs_SA_for_Max_Cut.ipynb 19
 def solve_with_annealing(G, num_reads, is_max_cut=True):
     sampler = oj.SASampler()
 
